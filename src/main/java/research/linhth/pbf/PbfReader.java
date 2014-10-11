@@ -11,7 +11,7 @@ import java.util.concurrent.Executors;
  * @refer: graphhopper.com
  *
  */
-public class PbfReader implements Runnable 
+public class PbfReader implements Runnable
 {
 	private InputStream inputStream;
 	private Sink sink;
@@ -25,20 +25,13 @@ public class PbfReader implements Runnable
 	}
 
 	public void run() {
-		// TODO Auto-generated method stub
-		
-	}
-
-/*	@Override
-	public void run() 
-	{
 		ExecutorService executorService = Executors.newFixedThreadPool(workers);
 		try {
 			
 		} catch (Exception e) {
 			// TODO: handle exception
 		}
+		
 	}
-	*/
 	
 }
