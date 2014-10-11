@@ -5,4 +5,12 @@
   <version>0.0.1-SNAPSHOT</version>
   <name>ReadPbfFile</name>
   <description>research</description>
+  
+  <dependencies>
+  	<dependency>
+            <groupId>org.openstreetmap.osmosis</groupId>
+            <artifactId>osmosis-osm-binary</artifactId>
+            <version>0.43.1</version>
+        </dependency>
+  </dependencies>
 </project>

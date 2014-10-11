@@ -17,6 +17,10 @@ public class PbfReader implements Runnable
 	private Sink sink;
 	private int workers;
 	
+	public static void main(String []args) {
+		System.out.println("Start");
+	}
+	
 	public PbfReader( InputStream in, Sink sink, int workers ) 
 	{
 		this.inputStream = in;
