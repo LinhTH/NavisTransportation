@@ -1,5 +1,6 @@
 package research.linhth.pbf;
 
+import java.io.DataInputStream;
 import java.io.InputStream;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
@@ -31,6 +32,9 @@ public class PbfReader implements Runnable
 	public void run() {
 		ExecutorService executorService = Executors.newFixedThreadPool(workers);
 		try {
+			//Tạo bộ tách dòng để chia dòng pbf thành các blob
+			PbfStreamSplitter streamSplitter = new PbfStreamSplitter(new DataInputStream(this.inputStream));
+			
 			
 		} catch (Exception e) {
 			// TODO: handle exception
