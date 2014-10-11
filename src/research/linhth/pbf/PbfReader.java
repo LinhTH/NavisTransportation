@@ -10,4 +10,8 @@ import java.io.InputStream;
  */
 public class PbfReader {
 	private InputStream inputStream;
+	//TODO Sink
+	private int workers;
+	
+	public PbfReader( InputStream in, )
 }
