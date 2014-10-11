@@ -35,7 +35,14 @@ public class PbfReader implements Runnable
 			//Tạo bộ tách dòng để chia dòng pbf thành các blob
 			PbfStreamSplitter streamSplitter = new PbfStreamSplitter(new DataInputStream(this.inputStream));
 			
-			
+			// Process all blobs of data in the stream using threads from the
+            // executor service. We allow the decoder to issue an extra blob
+            // than there are workers to ensure there is another blob
+            // immediately ready for processing when a worker thread completes.
+            // The main thread is responsible for splitting blobs from the
+            // request stream, and sending decoded entities to the sink.
+			PbfDecoder pbfDecoder = new PbfDecoder( streamSplitter, executorService, workers + 1, sink );
+			pbfDecoder.run();		
 		} catch (Exception e) {
 			// TODO: handle exception
 		}
