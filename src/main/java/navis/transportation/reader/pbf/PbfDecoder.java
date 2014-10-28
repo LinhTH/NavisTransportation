@@ -35,9 +35,19 @@ public class PbfDecoder implements Runnable{
         blobResults = new LinkedList<PbfBlobResult>();
 	}
 	
+	private void processBlobs() {
+		
+	}
+	
+	
 	@Override
 	public void run() {
-		// TODO Auto-generated method stub
+		lock.lock();
+		try {
+			processBlobs();
+		} finally {
+			lock.unlock();
+		}
 		
 	}
 	
