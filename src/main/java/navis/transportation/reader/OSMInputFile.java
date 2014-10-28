@@ -13,6 +13,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import javax.management.openmbean.InvalidOpenTypeException;
 
 import navis.transportation.reader.pbf.ItfSink;
+import navis.transportation.reader.pbf.PbfReader;
 
 public class OSMInputFile implements ItfSink, Closeable {
     private boolean eof;
@@ -31,6 +32,7 @@ public class OSMInputFile implements ItfSink, Closeable {
 	}
     
     public OSMInputFile open() {
+    	openPBFReader(bis);
     	return this;
     }
     
@@ -85,4 +87,17 @@ public class OSMInputFile implements ItfSink, Closeable {
         workerThreads = num;
         return this;
     }
+    
+    Thread pbfReaderThread;
+	private void openPBFReader( InputStream stream ) {
+		hasIncomingData = true;
+
+        if (workerThreads <= 0)
+            workerThreads = 2;
+        
+        PbfReader reader = new PbfReader( stream, this, workerThreads );
+       
+        pbfReaderThread  = new Thread(reader, "PBF Reader"); 
+        pbfReaderThread.start();
+	}
 }
