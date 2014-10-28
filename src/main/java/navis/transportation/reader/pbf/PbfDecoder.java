@@ -1,11 +1,14 @@
 package navis.transportation.reader.pbf;
 
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+
+import navis.transportation.reader.OSMElement;
 
 /**
  * Decodes all blocks from a PBF stream using worker threads
@@ -36,7 +39,24 @@ public class PbfDecoder implements Runnable{
 	}
 	
 	private void processBlobs() {
-		
+		while (streamSplitter.hasNext()) {
+			PbfRawBlob rawBlob = streamSplitter.next();
+			//create the result object to capture the result of the decoded blob and it to the blob results queue
+			final PbfBlobResult blobResult = new PbfBlobResult();
+			blobResults.add(blobResult);
+			
+			ItfPbfBlobDecoderListener blobDecoderListener = new ItfPbfBlobDecoderListener() {				
+				@Override
+				public void error(Exception ex) {
+					
+				}
+				
+				@Override
+				public void complete(List<OSMElement> decodedEntities) {
+					
+				}
+			};
+		}
 	}
 	
 	
