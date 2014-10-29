@@ -90,8 +90,23 @@ public class PbfBlobDecoder implements Runnable {
         }
         
     }
+      
+    private void processOsmPrimitives( byte[] data ) throws InvalidProtocolBufferException {
+    	//With vietnam.pbf , it has got ~ 356 OSMdata for the time being.
+    	Osmformat.PrimitiveBlock block = Osmformat.PrimitiveBlock.parseFrom(data); 
+    	PbfFieldDecoder fieldDecoder = new PbfFieldDecoder(block);
+    	/*for ( Osmformat.PrimitiveGroup primitiveGroup :  block.getPrimitivegroupList() ) 
+    	{
+    		// log.debug("Processing OSM primitive group.");
+    		 processNodes( primitiveGroup.getDense(), fieldDecoder );
+    		 processNodes( primitiveGroup.getNodesList(), fieldDecoder );
+    		 processWays(primitiveGroup.getWaysList(), fieldDecoder);
+    		 processRelations(primitiveGroup.getRelationsList(), fieldDecoder);
+    	}*/
+    }
     
-    
+   
+       
     private void runAndTrapExceptions() {
     	try {
 	    	decodedEntities = new ArrayList<OSMElement>();
@@ -99,7 +114,7 @@ public class PbfBlobDecoder implements Runnable {
 	    	if ( "OSMHeader".equals(blobType) ) {
 	    		processOsmHeader( readBlobContent() ); //Chi kiem tra co du cac feature
 	    	} else if ( "OSMData".equals(blobType) ) {
-	    		//processOsmPrimitives(readBlobContent());
+	    		processOsmPrimitives(readBlobContent());
 	    	} else {
 	    		if (log.isDebugEnabled()) {
 	    			log.debug("Skipping unrecognised blob type " + blobType);
