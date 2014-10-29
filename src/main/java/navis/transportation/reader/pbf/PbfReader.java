@@ -10,13 +10,13 @@ import java.util.concurrent.Executors;
  */
 public class PbfReader implements Runnable {
 	private InputStream inputStream;
-	private ItfSink sink;
+	private ItfProcessBox processBox;
 	private int workers;
 	
-	public PbfReader( InputStream in, ItfSink sink, int workers ) 
+	public PbfReader( InputStream in, ItfProcessBox processBox, int workers ) 
 	{
 		this.inputStream = in;
-		this.sink = sink;
+		this.processBox = processBox;
 		this.workers = workers;
 	}
 
@@ -33,13 +33,13 @@ public class PbfReader implements Runnable {
             // immediately ready for processing when a worker thread completes.
             // The main thread is responsible for splitting blobs from the
             // request stream, and sending decoded entities to the sink.
-			PbfDecoder pbfDecoder = new PbfDecoder( streamSplitter, executorService, workers + 1, sink );
+			PbfDecoder pbfDecoder = new PbfDecoder( streamSplitter, executorService, workers + 1, processBox );
 			//Chay luong run cua PbfDecoder
 			pbfDecoder.run();		
 		} catch (Exception e) {
 			throw new RuntimeException("Unable to read PBF file.", e);
 		} finally {
-			sink.complete();
+			processBox.complete();
 			executorService.shutdownNow();
 		}
 	}

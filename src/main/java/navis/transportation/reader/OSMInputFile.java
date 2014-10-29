@@ -12,10 +12,10 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 import javax.management.openmbean.InvalidOpenTypeException;
 
-import navis.transportation.reader.pbf.ItfSink;
+import navis.transportation.reader.pbf.ItfProcessBox;
 import navis.transportation.reader.pbf.PbfReader;
 
-public class OSMInputFile implements ItfSink, Closeable {
+public class OSMInputFile implements ItfProcessBox, Closeable {
     private boolean eof;
     private InputStream bis;
     

@@ -1,13 +1,19 @@
 package navis.transportation.reader.pbf;
 
+import gnu.trove.list.TLongList;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
 
 import navis.transportation.reader.OSMElement;
+import navis.transportation.reader.OSMNode;
 
 import org.openstreetmap.osmosis.osmbinary.Fileformat;
 import org.openstreetmap.osmosis.osmbinary.Osmformat;
@@ -90,29 +96,136 @@ public class PbfBlobDecoder implements Runnable {
         }
         
     }
-      
+
+    
+    private void processNodes( Osmformat.DenseNodes nodes, PbfFieldDecoder fieldDecoder ) {
+    	List<Long> idList  = nodes.getIdList();
+    	List<Long> latList = nodes.getLatList();
+    	List<Long> lonList = nodes.getLonList();
+    	
+    	if (checkData) {
+            if ((idList.size() != latList.size()) || (idList.size() != lonList.size())) {
+                throw new RuntimeException("Number of ids (" + idList.size() + "), latitudes (" + latList.size()
+                        + "), and longitudes (" + lonList.size() + ") don't match");
+            }
+        }
+    	
+    	Iterator<Integer> keysValuesIterator = nodes.getKeysValsList().iterator();
+    	long nodeId = 0;
+        long latitude = 0;
+        long longitude = 0;
+        
+    	for ( int i = 0; i < idList.size(); i++ ) {
+    		nodeId    += idList.get(i);
+    		latitude  += latList.get(i);
+    		longitude += lonList.get(i);
+    		
+    		Map<String, String> tags = null;
+
+    		while( keysValuesIterator.hasNext() ) { //build tags
+    			int keyIndex = keysValuesIterator.next();
+    			if (keyIndex == 0)
+    				break;
+    			
+    			 if (checkData) {
+                     if (!keysValuesIterator.hasNext()) {
+                         throw new RuntimeException(
+                                 "The PBF DenseInfo keys/values list contains a key with no corresponding value.");
+                     }
+                 }
+    			 int valueIndex = keysValuesIterator.next();
+    			 if (tags == null) {
+                     tags = new HashMap<String, String>();
+                 } 
+    			 tags.put(fieldDecoder.decodeString(keyIndex), fieldDecoder.decodeString(valueIndex));
+    			// if ( Thread.currentThread().getId() == 11) 
+    	    			//System.out.println("put : " +fieldDecoder.decodeString(keyIndex) +", " + fieldDecoder.decodeString(valueIndex));
+    		}
+    		//if ( Thread.currentThread().getId() == 11 && tags != null && tags.size() > 2 ) 
+    			//System.out.println("finish tags");
+    		OSMNode node = new OSMNode(nodeId, ((double) latitude) / 10000000, ((double) longitude) / 10000000);
+            node.setTags(tags);
+
+            // Add the bound object to the results.
+            decodedEntities.add(node);
+    	}
+    }
+    
+    private void processWays( List<Osmformat.Way> ways, PbfFieldDecoder fieldDecoder )
+    {
+        for (Osmformat.Way way : ways)
+        {  	
+            Map<String, String> tags = buildTags(way.getKeysList(), way.getValsList(), fieldDecoder);
+            OSMWay osmWay = new OSMWay(way.getId());
+            // EXAMPLE TAGS OF A OSMWAY  - http://www.openstreetmap.org/way/144391828
+            // Way : 144391828
+            // layer : 1
+            // ref : 80
+            // bridge : yes
+            // highway : primary
+            // name : Cầu Tà Xăng
+            osmWay.setTags(tags);
+
+            // Build up the list of way nodes for the way
+            long nodeId = 0;
+            TLongList wayNodes = osmWay.getNodes();
+            for (long nodeIdOffset : way.getRefsList())
+            {
+                nodeId += nodeIdOffset; // delta encoding - http://en.wikipedia.org/wiki/Delta_encoding
+                wayNodes.add(nodeId);
+            }
+            decodedEntities.add(osmWay);
+        }
+    }
+    
+    /**
+     * Build Tags for ways
+     * @return
+     */
+    private Map<String, String> buildTags( List<Integer> keys, List<Integer> values, PbfFieldDecoder fieldDecoder ) {
+        if (checkData) {
+            if (keys.size() != values.size()) {
+                throw new RuntimeException("Number of tag keys (" + keys.size() + ") and tag values ("
+                        + values.size() + ") don't match");
+            }
+        }
+        Iterator<Integer> keyIterator = keys.iterator();
+        Iterator<Integer> valueIterator = values.iterator();
+        if (keyIterator.hasNext())
+        {
+            Map<String, String> tags = new HashMap<String, String>();
+            while (keyIterator.hasNext())
+            {
+                String key = fieldDecoder.decodeString(keyIterator.next());
+                String value = fieldDecoder.decodeString(valueIterator.next());
+                tags.put(key, value);
+            }
+            return tags;
+        }
+        return null;
+    }
+   
+    
     private void processOsmPrimitives( byte[] data ) throws InvalidProtocolBufferException {
     	//With vietnam.pbf , it has got ~ 356 OSMdata for the time being.
     	Osmformat.PrimitiveBlock block = Osmformat.PrimitiveBlock.parseFrom(data); 
     	PbfFieldDecoder fieldDecoder = new PbfFieldDecoder(block);
-    	/*for ( Osmformat.PrimitiveGroup primitiveGroup :  block.getPrimitivegroupList() ) 
+    	for ( Osmformat.PrimitiveGroup primitiveGroup :  block.getPrimitivegroupList() ) 
     	{
-    		// log.debug("Processing OSM primitive group.");
     		 processNodes( primitiveGroup.getDense(), fieldDecoder );
-    		 processNodes( primitiveGroup.getNodesList(), fieldDecoder );
     		 processWays(primitiveGroup.getWaysList(), fieldDecoder);
-    		 processRelations(primitiveGroup.getRelationsList(), fieldDecoder);
-    	}*/
+    	}
     }
     
    
        
     private void runAndTrapExceptions() {
     	try {
+    		//Store a decoded data from a blob
 	    	decodedEntities = new ArrayList<OSMElement>();
 	    	//process the blob that has "OSMHeader" type
 	    	if ( "OSMHeader".equals(blobType) ) {
-	    		processOsmHeader( readBlobContent() ); //Chi kiem tra co du cac feature
+	    		processOsmHeader( readBlobContent() ); 
 	    	} else if ( "OSMData".equals(blobType) ) {
 	    		processOsmPrimitives(readBlobContent());
 	    	} else {

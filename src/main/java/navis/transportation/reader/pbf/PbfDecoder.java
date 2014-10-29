@@ -18,17 +18,17 @@ public class PbfDecoder implements Runnable{
 	private final PbfStreamSplitter streamSplitter;
 	private final ExecutorService executorService;
 	private final int maxPendingBlobs;
-	private final ItfSink sink;
+	private final ItfProcessBox processBox;
 	private final Lock lock; 
 	private final Condition dataWaitCondition;
 	private final Queue<PbfBlobResult> blobResults;
 	
 	public PbfDecoder( PbfStreamSplitter streamSplitter, ExecutorService executorService, int maxPendingBlobs,
-            ItfSink sink ) {
+            ItfProcessBox processBox ) {
 		this.streamSplitter = streamSplitter;
 		this.executorService = executorService;
 		this.maxPendingBlobs = maxPendingBlobs; // = number of Workers + 1
-		this.sink = sink;
+		this.processBox = processBox;
 		
 		//Khởi tạo kiểu đồng bộ hóa nguyên thủy
 		lock = new ReentrantLock();
@@ -80,9 +80,10 @@ public class PbfDecoder implements Runnable{
 			// Create the blob decoder itself and execute it on a worker thread.
 			PbfBlobDecoder blobDecoder = new PbfBlobDecoder(rawBlob.getType(), rawBlob.getData(), blobDecoderListener);
 			executorService.execute(blobDecoder);
-			
-			sendResultsToSink(maxPendingBlobs - 1);
+			// If the number of pending blobs has reached capacity then we send results to OSMInputFile.
+			sendResultsToprocessBox(maxPendingBlobs - 1);
 		}
+		sendResultsToprocessBox(0);
 	}
 	
 	
@@ -119,7 +120,7 @@ public class PbfDecoder implements Runnable{
 		dataWaitCondition.signal();
 	}
 	
-	private void sendResultsToSink( int numberOfWorker ) { //
+	private void sendResultsToprocessBox( int numberOfWorker ) { //
 		while (blobResults.size() > numberOfWorker) {
 			// Get the next result from the queue and wait for it to complete.
 			PbfBlobResult blobResult = blobResults.remove(); // get blob from the head of Queue
@@ -136,7 +137,7 @@ public class PbfDecoder implements Runnable{
 			try {
 				//Luoong put ket qua vao la luong hien tai - 8
 				for ( OSMElement entity : blobResult.getEntities() ) {
-					sink.process(entity);
+					processBox.process(entity);
 				}
 			} finally {
 				//System.out.println(Thread.currentThread().getId() + " lock");
