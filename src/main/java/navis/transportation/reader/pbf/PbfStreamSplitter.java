@@ -56,10 +56,10 @@ public class PbfStreamSplitter implements Iterator<PbfRawBlob> {
 				return;
 			}
 			
-			System.out.println("Reading header for blob " + dataBlockCount++);
+		//	System.out.println("Reading header for blob " + dataBlockCount++);
 			Fileformat.BlobHeader blobHeader = readHeader(headerLength);
 			
-			System.out.println("Processing blob of type " + blobHeader.getType() + ".");
+		//	System.out.println("Processing blob of type " + blobHeader.getType() + ".");
 			byte[] blobData = readRawBlob(blobHeader);
 			
 			nextBlob = new PbfRawBlob(blobHeader.getType(), blobData);

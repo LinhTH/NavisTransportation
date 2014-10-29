@@ -1,5 +1,6 @@
 package navis.transportation.reader.pbf;
 
+import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
@@ -26,7 +27,7 @@ public class PbfDecoder implements Runnable{
             ItfSink sink ) {
 		this.streamSplitter = streamSplitter;
 		this.executorService = executorService;
-		this.maxPendingBlobs = maxPendingBlobs;
+		this.maxPendingBlobs = maxPendingBlobs; // = number of Workers + 1
 		this.sink = sink;
 		
 		//Khởi tạo kiểu đồng bộ hóa nguyên thủy
@@ -48,14 +49,39 @@ public class PbfDecoder implements Runnable{
 			ItfPbfBlobDecoderListener blobDecoderListener = new ItfPbfBlobDecoderListener() {				
 				@Override
 				public void error(Exception ex) {
-					
+					lock.lock();
+                    try
+                    {
+                        System.out.println(getClass().getName() + " -- ERROR: " + new Date());
+                        blobResult.storeFailureResult(ex);
+                        signalUpdate();
+                    } finally
+                    {
+                        lock.unlock();
+                    }		
 				}
 				
 				@Override
 				public void complete(List<OSMElement> decodedEntities) {
-					
+					//System.out.println(Thread.currentThread().getId() + " process complete");
+					lock.lock();
+                    try
+                    {
+                    //	System.out.println(Thread.currentThread().getId() + " process complete");
+                    	blobResult.storeSuccessResult(decodedEntities);
+						signalUpdate();
+                    } finally
+                    {
+                        lock.unlock();
+                    }		
 				}
 			};
+			
+			// Create the blob decoder itself and execute it on a worker thread.
+			PbfBlobDecoder blobDecoder = new PbfBlobDecoder(rawBlob.getType(), rawBlob.getData(), blobDecoderListener);
+			executorService.execute(blobDecoder);
+			
+			sendResultsToSink(maxPendingBlobs - 1);
 		}
 	}
 	
@@ -71,4 +97,51 @@ public class PbfDecoder implements Runnable{
 		
 	}
 	
+	/**
+     * Any thread can call this method when they wish to wait until an update has been performed by
+     * another thread.
+     */
+    private void waitForUpdate()
+    {
+        try
+        {
+            dataWaitCondition.await();
+        } catch (InterruptedException e)
+        {
+            throw new RuntimeException("Thread was interrupted.", e);
+        }
+    }
+	
+	/**
+	 * wake up the waiting threads
+	 */
+	private void signalUpdate() {
+		dataWaitCondition.signal();
+	}
+	
+	private void sendResultsToSink( int numberOfWorker ) { //
+		while (blobResults.size() > numberOfWorker) {
+			// Get the next result from the queue and wait for it to complete.
+			PbfBlobResult blobResult = blobResults.remove(); // get blob from the head of Queue
+			//System.out.println(Thread.currentThread().getId() + " come here");
+			while (!blobResult.isComplete()) {
+				waitForUpdate(); 
+			}
+			if (!blobResult.isSuccess()) {
+	                throw new RuntimeException("A PBF decoding worker thread failed, aborting.", blobResult.getException());
+	        }
+			//Duy nhat chi thay 1 luong 8 la hoat dong - Can xem lai de day luong len
+			//System.out.println(Thread.currentThread().getId() + " unlock");
+			lock.unlock();
+			try {
+				//Luoong put ket qua vao la luong hien tai - 8
+				for ( OSMElement entity : blobResult.getEntities() ) {
+					sink.process(entity);
+				}
+			} finally {
+				//System.out.println(Thread.currentThread().getId() + " lock");
+				lock.lock();
+			}
+		}
+	}
 }

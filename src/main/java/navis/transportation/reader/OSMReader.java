@@ -5,6 +5,8 @@ import gnu.trove.map.hash.TLongLongHashMap;
 import java.io.File;
 import java.io.IOException;
 
+import navis.transportation.support.Helper;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,6 +57,9 @@ public class OSMReader implements DataReader {
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+		} finally {
+			//Have to call method to close connecting to resource
+			Helper.close(in);
 		}
 	}
 	

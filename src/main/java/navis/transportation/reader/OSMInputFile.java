@@ -78,8 +78,7 @@ public class OSMInputFile implements ItfSink, Closeable {
 
 	@Override
 	public void complete() {
-		// TODO Auto-generated method stub
-		
+		hasIncomingData = true;
 	}
 	
     public OSMInputFile setWorkerThreads( int num )
