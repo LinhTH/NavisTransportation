@@ -80,10 +80,11 @@ public class PbfDecoder implements Runnable{
 			// Create the blob decoder itself and execute it on a worker thread.
 			PbfBlobDecoder blobDecoder = new PbfBlobDecoder(rawBlob.getType(), rawBlob.getData(), blobDecoderListener);
 			executorService.execute(blobDecoder);
-			// If the number of pending blobs has reached capacity then we send results to OSMInputFile.
-			sendResultsToprocessBox(maxPendingBlobs - 1);
+			// If the number of pending blobs has reached capacity then we send results to ProcessBox(OSMInputFile).
+			sendResultsToProcessBox(maxPendingBlobs - 1);
 		}
-		sendResultsToprocessBox(0);
+		// eof of stream. Send all remaining data to ProcessBox (OSMInputFile)
+		sendResultsToProcessBox(0);
 	}
 	
 	
@@ -120,7 +121,7 @@ public class PbfDecoder implements Runnable{
 		dataWaitCondition.signal();
 	}
 	
-	private void sendResultsToprocessBox( int numberOfWorker ) { //
+	private void sendResultsToProcessBox( int numberOfWorker ) { //
 		while (blobResults.size() > numberOfWorker) {
 			// Get the next result from the queue and wait for it to complete.
 			PbfBlobResult blobResult = blobResults.remove(); // get blob from the head of Queue

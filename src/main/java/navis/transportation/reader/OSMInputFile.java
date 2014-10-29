@@ -27,7 +27,7 @@ public class OSMInputFile implements ItfProcessBox, Closeable {
     public OSMInputFile( File file ) throws IOException {
 	   	 // Decode and determine the type of file.
 	   	 bis = decode(file);
-	   	 //Khoi tao Hang doi danh sach, danh cho concurency
+	   	 //if queue is full, it blocks itself => don't put anything into it
 		 itemQueue = new LinkedBlockingQueue<OSMElement>(50000);
 	}
     
@@ -72,8 +72,14 @@ public class OSMInputFile implements ItfProcessBox, Closeable {
 
 	@Override
 	public void process(OSMElement item) {
-		// TODO Auto-generated method stub
-		
+		try
+        {
+            // blocks if full
+            itemQueue.put(item);
+        } catch (InterruptedException ex)
+        {
+            throw new RuntimeException(ex);
+        }
 	}
 
 	@Override

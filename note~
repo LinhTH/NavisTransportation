@@ -1,0 +1,5 @@
+* Đánh dấu các điểm trên một con đường:
+ + Nếu đường ngắn chỉ gồm hai điểm:
+    - là đường thẳng => tạo thêm một điểm ở giữa
+ + tạo node gần với một node là node giao giữa các con đường
+ + Loai bỏ các đường có tag là water
