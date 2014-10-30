@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 import javax.management.openmbean.InvalidOpenTypeException;
 
@@ -84,7 +85,7 @@ public class OSMInputFile implements ItfProcessBox, Closeable {
 
 	@Override
 	public void complete() {
-		hasIncomingData = true;
+		hasIncomingData = false;
 	}
 	
     public OSMInputFile setWorkerThreads( int num )
@@ -105,4 +106,38 @@ public class OSMInputFile implements ItfProcessBox, Closeable {
         pbfReaderThread  = new Thread(reader, "PBF Reader"); 
         pbfReaderThread.start();
 	}
+	
+	private OSMElement getNextPBF() {
+		OSMElement next = null;
+		while (next == null) {
+			if (!hasIncomingData && itemQueue.isEmpty()) {
+				// we are done, stop
+				eof = true;
+				break;
+			}
+			try {
+				next = itemQueue.poll( 10, TimeUnit.MILLISECONDS );
+			} catch (InterruptedException ex) {
+				eof = true;
+				break;
+			}
+		}		
+		return next;
+	}
+	
+	
+	 public OSMElement getNext() {
+        if (eof)
+            throw new IllegalStateException("EOF reached");
+        if (!binary)
+        	throw new IllegalStateException("Just using a Pbf file");
+        
+        OSMElement item;
+    	if ( (item = getNextPBF()) != null )
+    		return item;
+
+        eof = true;
+        return null;
+    }
+	
 }

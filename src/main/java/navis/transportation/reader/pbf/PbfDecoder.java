@@ -103,13 +103,10 @@ public class PbfDecoder implements Runnable{
      * Any thread can call this method when they wish to wait until an update has been performed by
      * another thread.
      */
-    private void waitForUpdate()
-    {
-        try
-        {
+    private void waitForUpdate() {
+        try {
             dataWaitCondition.await();
-        } catch (InterruptedException e)
-        {
+        } catch (InterruptedException e){
             throw new RuntimeException("Thread was interrupted.", e);
         }
     }
@@ -121,19 +118,17 @@ public class PbfDecoder implements Runnable{
 		dataWaitCondition.signal();
 	}
 	
-	private void sendResultsToProcessBox( int numberOfWorker ) { //
-		while (blobResults.size() > numberOfWorker) {
+	private void sendResultsToProcessBox( int targetQueueSize ) {
+		while (blobResults.size() > targetQueueSize) {
 			// Get the next result from the queue and wait for it to complete.
-			PbfBlobResult blobResult = blobResults.remove(); // get blob from the head of Queue
-			//System.out.println(Thread.currentThread().getId() + " come here");
+			PbfBlobResult blobResult = blobResults.remove(); //Lay blob dau hang doi ra
 			while (!blobResult.isComplete()) {
-				waitForUpdate(); 
+				waitForUpdate();
 			}
 			if (!blobResult.isSuccess()) {
 	                throw new RuntimeException("A PBF decoding worker thread failed, aborting.", blobResult.getException());
 	        }
-			//Duy nhat chi thay 1 luong 8 la hoat dong - Can xem lai de day luong len
-			//System.out.println(Thread.currentThread().getId() + " unlock");
+			
 			lock.unlock();
 			try {
 				//Luoong put ket qua vao la luong hien tai - 8
@@ -141,7 +136,6 @@ public class PbfDecoder implements Runnable{
 					processBox.process(entity);
 				}
 			} finally {
-				//System.out.println(Thread.currentThread().getId() + " lock");
 				lock.lock();
 			}
 		}

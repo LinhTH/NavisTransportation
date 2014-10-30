@@ -15,8 +15,10 @@ public class Helper {
 	
 	public static void close( Closeable cl ) {
 		try {
-			if (cl != null)
+			if (cl != null) {
+				System.out.println("Close InputStream");
 				cl.close();
+			}
 		} catch (IOException ex) {
 			throw new RuntimeException("Couldn't close resource", ex);
 		}

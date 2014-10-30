@@ -22,15 +22,16 @@ public class OSMWay extends OSMElement{
         return nodes;
     }
     
+    
     @Override
     public String toString() {
     	System.out.println("Way : " + getId());
-    	/*Map<String, Object> tags = getTags();
+    	Map<String, Object> tags = getTags();
     	for (Entry<String, Object> e : tags.entrySet())
     	{
          System.out.println(e.getKey() + " : " + (String)e.getValue());
-    	}*/
-    	System.out.println("node of Way: " + nodes.size());
+    	}
+    //	System.out.println("node of Way: " + nodes.size());
     	return null;
     }
 }

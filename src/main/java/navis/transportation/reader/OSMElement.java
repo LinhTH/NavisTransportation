@@ -16,24 +16,24 @@ public abstract class OSMElement {
      private final long id;
      private final Map<String, Object> properties = new HashMap<String, Object>(5); //containes tags of Node
      
-     protected OSMElement( long id, int type )
-     {
+     protected OSMElement( long id, int type ) {
          this.id = id;
          this.type = type;
      }
      
-     public long getId()
-     {
+     public long getId() {
          return id;
      }
      
-     protected Map<String, Object> getTags()
-     {
+     public int getType() {
+    	 return type;
+     }
+     
+     protected Map<String, Object> getTags() {
          return properties;
      }
      
-     public void setTags( Map<String, String> newTags )
-     {
+     public void setTags( Map<String, String> newTags ) {
          properties.clear();
          if (newTags != null)
              for (Entry<String, String> e : newTags.entrySet())
@@ -42,8 +42,19 @@ public abstract class OSMElement {
              }
      }
      
-     public void setTag( String name, Object value )
-     {
+     public void setTag( String name, Object value ) {
          properties.put(name, value);
      }
+     
+     public boolean hasTags() {
+    	 return !properties.isEmpty();
+     }
+     
+     public boolean hasTag( String name )
+     {
+    	 return properties.containsKey(name);
+      //   return (String) properties.get(name);
+     }
+     
+     
 }
