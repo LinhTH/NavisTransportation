@@ -10,6 +10,7 @@ import navis.transportation.reader.pbf.OSMWay;
 import navis.transportation.support.Helper;
 import navis.transportation.support.ItfBtreeMap;
 import navis.transportation.support.LongIntBTreeMap;
+import navis.transportation.support.StopWatch;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,8 +47,9 @@ public class OSMReader implements DataReader {
             throw new IllegalStateException("No OSM file specified");
 		if (!osmFile.exists())
             throw new IllegalStateException("Your specified OSM file does not exist:" + osmFile.getAbsolutePath());
-		
+		StopWatch swp = new StopWatch().start();
 		preProcess(osmFile);
+		logger.info("preProcess took: " + swp.stop().getSeconds() + " s");
 
 	}	
 	
@@ -74,7 +76,7 @@ public class OSMReader implements DataReader {
             }
             //optimize LongIntBTreeMap
             getBTreeMap().optimize();
-            logger.info("Number of handeled way: " + tmpWayCounter);
+            logger.info(tmpWayCounter + " ways were handled!");
             logger.info("Info of BTreeMap:  " + getBTreeMap().toString());
 		} catch (IOException e) {
 			throw new RuntimeException("Problem while parsing file", e);
