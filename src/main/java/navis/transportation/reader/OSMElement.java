@@ -46,6 +46,11 @@ public abstract class OSMElement {
          properties.put(name, value);
      }
      
+     public boolean hasTag( String key, String value )
+     {
+         return value.equals(properties.get(key));
+     }
+     
      public boolean hasTags() {
     	 return !properties.isEmpty();
      }
@@ -53,7 +58,6 @@ public abstract class OSMElement {
      public boolean hasTag( String name )
      {
     	 return properties.containsKey(name);
-      //   return (String) properties.get(name);
      }
      
      

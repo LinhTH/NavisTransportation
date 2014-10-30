@@ -68,6 +68,9 @@ public class LongIntBTreeMap implements ItfBtreeMap {
 		return size;
 	}
 
+	/**
+	 * @return value of specified node
+	 */
 	@Override
 	public int get(long key) {
 		return root.get(key);

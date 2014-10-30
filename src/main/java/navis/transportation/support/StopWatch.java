@@ -51,6 +51,11 @@ public class StopWatch
     {
         return nanoTime / 1000000;
     }
+    
+    public StopWatch restart() {
+    	nanoTime = 0;
+    	return this;
+    }
 
     public long getNanos()
     {

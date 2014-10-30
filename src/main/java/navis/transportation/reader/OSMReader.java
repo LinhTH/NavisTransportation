@@ -4,7 +4,10 @@ import gnu.trove.list.TLongList;
 import gnu.trove.map.hash.TLongObjectHashMap;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.text.DecimalFormat;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Queue;
 
@@ -17,6 +20,8 @@ import navis.transportation.support.StopWatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static navis.transportation.support.CalOnOSM.calcDist;
+import static navis.transportation.support.CalOnOSM.getNewNode;
 /**
  * Parsing an OSM pbf file.
  * <p/>
@@ -29,6 +34,8 @@ public class OSMReader implements DataReader {
 	protected static final int EMPTY = -1;
 	protected static final int EDGE_NODE = 1;
 	protected static final int TOP_NODE = -2;
+	
+	private String urlOutput = "/home/rimberry/Desktop/resultNavis.js";
 	
 	private static final Logger logger = LoggerFactory.getLogger(OSMReader.class);
 	
@@ -56,7 +63,10 @@ public class OSMReader implements DataReader {
 		StopWatch swp = new StopWatch().start();
 		preProcess(osmFile);
 		logger.info("preProcess took: " + swp.stop().getSeconds() + " s");
-
+		
+		swp.restart().start();
+		process();
+		logger.info("Process took: " + swp.stop().getSeconds() + " s");
 	}	
 
 	
@@ -71,7 +81,7 @@ public class OSMReader implements DataReader {
             {
             	if (item.getType() == OSMElement.WAY) {
             		final OSMWay way = (OSMWay) item;
-            		boolean valid = filterWay(way);
+            		boolean valid = filterWay(way, way.getId());
             		if (valid) {
             			TLongList wayNodes = way.getNodes();
             			int size = wayNodes.size();
@@ -90,9 +100,11 @@ public class OSMReader implements DataReader {
             		nodeCounter++;
             	}
             }
+      
             //optimize LongIntBTreeMap
             getBTreeMap().optimize();
-            logger.info(tmpWayCounter + " ways and " + nodeCounter + " nodes were handled!" );
+            getNodeLOMap().compact();
+            logger.info(tmpWayCounter + " ways and " + nodeCounter + " nodes were handled!");
             logger.info("Info of BTreeMap:  " + getBTreeMap().toString());
 		} catch (IOException e) {
 			throw new RuntimeException("Problem while parsing file", e);
@@ -101,9 +113,90 @@ public class OSMReader implements DataReader {
 		}
 	}
 	
+
+	void process() throws IOException {
+		FileWriter fw = new FileWriter(urlOutput, false);
+	//	fw.write("points = [");
+		int count = 0;
+		Iterator<OSMWay> wayIterator = getWayQueue().iterator();
+		while (wayIterator.hasNext()) {
+			count++;
+			final OSMWay way = (OSMWay) wayIterator.next();
+			TLongList wayNodes = way.getNodes();
+			int size = wayNodes.size();
+			double lastLon = 0, lastLat = 0;
+			boolean lastTopNode = false;
+			long lastnodeid = 0;
+			int nameGoup = 1;
+			for (int i = 0; i < size; i++) {
+				long nodeId = wayNodes.get(i);
+				OSMNode node = getNodeLOMap().get(nodeId);
+				//System.out.println(nodeId + " " + isTopNode(nodeId) + " " + node.getLat() + " " + node.getLon());	
+				if (lastLat == 0) {
+					lastLat = node.getLat();
+					lastLon = node.getLon();
+					lastTopNode = isTopNode(nodeId);
+					lastnodeid = nodeId;
+					if (!lastTopNode) {
+						//	fw.write("\n{ lat: "+ lastLat +", lon: "+ lastLon +"},");
+							fw.write( way.getId() +"\t" + nameGoup + "\t" + lastLat + "\t" + lastLon + "\n");
+					}
+					continue;
+				}
+				
+				//remove all same node
+				if (node.getLat() == lastLat && node.getLon() == lastLon)
+					continue;
+				
+				double currentLat = node.getLat();
+				double currentLon = node.getLon();
+				boolean currentTopNode = isTopNode(nodeId);
+				long currentnodeid = nodeId;
+				
+				if (lastTopNode ) {
+					OSMOffset offset = getNewNode(lastLat, lastLon, currentLat, currentLon);
+				//	fw.write("\n{ lat: "+ compactDouble(lastLat + offset.getOffsetLat()) +", lon: "+ compactDouble(lastLon + offset.getOffsetLon()) +"},");
+					fw.write( way.getId() +"\t" + nameGoup + "\t" + compactDouble(lastLat + offset.getOffsetLat()) + "\t" + compactDouble(lastLon + offset.getOffsetLon()) + "\n");
+					
+				//	System.out.println( way.getId() +"\t" + nameGoup + "\t" + compactDouble(lastLat + offset.getOffsetLat()) + "\t" +compactDouble(lastLon + offset.getOffsetLon()) + "\n");
+					//System.out.println( way.getId() +"\t" + nameGoup + "\t" + Double.parseDouble(compactDouble(lastLat + offset.getOffsetLat())) + "\t" + Double.parseDouble(compactDouble(lastLon + offset.getOffsetLon()) + "\n"));	
+				}
+				if (currentTopNode){
+					OSMOffset offset = getNewNode(currentLat, currentLon, lastLat, lastLon);
+					fw.write( way.getId() +"\t" + nameGoup + "\t" + compactDouble(currentLat + offset.getOffsetLat()) + "\t" + compactDouble(currentLon + offset.getOffsetLon()) + "\n");
+					//fw.write("\n{ lat: "+ compactDouble(currentLat + offset.getOffsetLat()) +", lon: "+ compactDouble(currentLon + offset.getOffsetLon()) +"},");
+					//fw.write("\n{ lat: "+ compactDouble(currentLat + offset.getOffsetLat()) +", lon: "+ compactDouble(currentLon + offset.getOffsetLon()) +"},");
+					//System.out.println( lastnodeid + ", " + currentnodeid + ", " + way.getId() +"\t" + offset.getOffsetLat() + "\t" + offset.getOffsetLon() + "\t" + currentLon + ", " + currentLat + ", " +  lastLon + ", " + lastLat);
+				//	System.out.println( way.getId() +"\t" + nameGoup + "\t" + Double.parseDouble(compactDouble(currentLat + offset.getOffsetLat())) + "\t" + Double.parseDouble(compactDouble(currentLon + offset.getOffsetLon()) + "\n"));
+					
+				}
+				
+				if (!currentTopNode) 
+					//fw.write("\n{ lat: "+ currentLat +", lon: "+ currentLon +"},");
+					fw.write( way.getId() +"\t" + nameGoup + "\t" + currentLat + "\t" + currentLon + "\n");
+				else
+					nameGoup++;
+
+				lastLat = currentLat;
+				lastLon = currentLon;
+				lastTopNode = currentTopNode;	
+				lastnodeid = currentnodeid;
+			}
+		}
+		//fw.write("\n];");
+		fw.close();
+	}
+	
 	public OSMReader setOSMFile( File osmFile ) {
 		this.osmFile = osmFile;
 		return this;
+	}
+	
+	/**
+	 * @return true : if node is top node.
+	 */
+	private boolean isTopNode(long nodeId) {
+		return getBTreeMap().get(nodeId) == TOP_NODE;
 	}
 	
 	public OSMReader setWorkerThreads( int numOfWorkers ) {
@@ -122,18 +215,28 @@ public class OSMReader implements DataReader {
     protected Queue<OSMWay> getWayQueue() {
     	return osmWayToQueue;
     }
+    
+    /**
+     * a.XXXXXX...XX -> a.XXXXXXX
+     */
+    private double compactDouble(double coor) {
+    	DecimalFormat df = new DecimalFormat("#.0000000");
+    	return Double.parseDouble(df.format(coor));
+    }
 	
 	 /**
      * analyze properties (tags) wayNodes, will be filled with participating node id.
      */
-    boolean filterWay( OSMWay item )
+    boolean filterWay( OSMWay item, long wayId )
     {
         // ignore broken geometry
         if (item.getNodes().size() < 2)
             return false;
-        //  40471 ways haven't got "highway" tag. and remove it
-        if (!item.hasTags() || !item.hasTag("highway") )
+
+        //  45434 ways haven't got "highway" tag. and remove it
+        if (!item.hasTags() || !item.hasTag("highway") || item.hasTag("highway", "footway") || item.hasTag("highway", "path") || item.hasTag("highway", "service")) {
             return false;
+        }
 
         return true;
     }
