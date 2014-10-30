@@ -18,5 +18,18 @@ public class OSMNode extends OSMElement{
         this.lon = lon;
     }
     
+    /**
+     * @return latitude of node
+     */
+    public double getLat() {
+    	return lat;
+    }
+    
+    /**
+     * @return longtitude of node
+     */
+    public double getLon() {
+    	return lon;
+    }
    
 }

@@ -1,10 +1,12 @@
 package navis.transportation.reader;
 
 import gnu.trove.list.TLongList;
-import gnu.trove.map.hash.TLongLongHashMap;
+import gnu.trove.map.hash.TLongObjectHashMap;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.LinkedList;
+import java.util.Queue;
 
 import navis.transportation.reader.pbf.OSMWay;
 import navis.transportation.support.Helper;
@@ -33,12 +35,16 @@ public class OSMReader implements DataReader {
 	private File osmFile = null;
 	private int workerThreads = -1;
 	
-	 private ItfBtreeMap osmNodeIdToBTreeMap;
+	private ItfBtreeMap osmNodeIdToBTreeMap;
+	private Queue<OSMWay> osmWayToQueue;
+	private TLongObjectHashMap<OSMNode> osmNodeIdToLOMap;
+
 	
 	public OSMReader(  )
     {
 		osmNodeIdToBTreeMap = new LongIntBTreeMap(200);
-        //pillarInfo = new PillarInfo(nodeAccess.is3D(), graphStorage.getDirectory());
+		osmNodeIdToLOMap = new TLongObjectHashMap<OSMNode>(200, 0.5f);
+		osmWayToQueue = new LinkedList<OSMWay>();
     }
 	
 	@Override
@@ -52,13 +58,15 @@ public class OSMReader implements DataReader {
 		logger.info("preProcess took: " + swp.stop().getSeconds() + " s");
 
 	}	
+
 	
 	void preProcess(File osmFile) {
 		OSMInputFile in = null;
 		try {
 			in = new OSMInputFile(osmFile).setWorkerThreads(workerThreads).open();
             OSMElement item;
-            long tmpWayCounter = 1;
+            long tmpWayCounter = 0;
+            long nodeCounter = 0;
             while ((item = in.getNext()) != null)
             {
             	if (item.getType() == OSMElement.WAY) {
@@ -71,12 +79,20 @@ public class OSMReader implements DataReader {
             				prepareHighwayNode(wayNodes.get(i));
             			}
             			tmpWayCounter++;
+            			getWayQueue().add(way);
             		}
+            	}
+            	
+            	//Store all nodes to HashMap
+            	if (item.getType() == OSMElement.NODE) {
+            		final OSMNode node = (OSMNode) item;
+            		getNodeLOMap().put(node.getId(), node);
+            		nodeCounter++;
             	}
             }
             //optimize LongIntBTreeMap
             getBTreeMap().optimize();
-            logger.info(tmpWayCounter + " ways were handled!");
+            logger.info(tmpWayCounter + " ways and " + nodeCounter + " nodes were handled!" );
             logger.info("Info of BTreeMap:  " + getBTreeMap().toString());
 		} catch (IOException e) {
 			throw new RuntimeException("Problem while parsing file", e);
@@ -97,6 +113,14 @@ public class OSMReader implements DataReader {
 	
     protected ItfBtreeMap getBTreeMap() {
     	return osmNodeIdToBTreeMap;
+    }
+    
+    protected TLongObjectHashMap<OSMNode> getNodeLOMap() {
+    	return osmNodeIdToLOMap;
+    }
+    
+    protected Queue<OSMWay> getWayQueue() {
+    	return osmWayToQueue;
     }
 	
 	 /**
