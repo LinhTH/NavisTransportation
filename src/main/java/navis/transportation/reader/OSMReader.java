@@ -12,6 +12,7 @@ import java.util.LinkedList;
 import java.util.Queue;
 
 import navis.transportation.reader.pbf.OSMWay;
+import navis.transportation.support.CalOnOSM;
 import navis.transportation.support.Helper;
 import navis.transportation.support.ItfBtreeMap;
 import navis.transportation.support.LongIntBTreeMap;
@@ -30,10 +31,21 @@ import static navis.transportation.support.CalOnOSM.getNewNode;
  * osmNodeIdToIndexMap returns EMPTY.
  * <p>
  */
+/*
+ * Phần bao của hồ chí minh
+ * 10.870566, 106.729768 N-E
+ * 10.708010, 106.569436 S-W
+ */
+
 public class OSMReader implements DataReader {
 	protected static final int EMPTY = -1;
 	protected static final int EDGE_NODE = 1;
 	protected static final int TOP_NODE = -2;
+	
+	private final double maxHCMlatitude = 10.870566;
+	private final double minHCMlatitude = 10.708010;
+	private final double maxHCMlongtitude = 106.729768;
+	private final double minHCMlongtitude = 106.569436;
 	
 	private String urlOutput = "/home/rimberry/Desktop/resultNavis.js";
 	
@@ -116,7 +128,7 @@ public class OSMReader implements DataReader {
 
 	void process() throws IOException {
 		FileWriter fw = new FileWriter(urlOutput, false);
-	//	fw.write("points = [");
+		fw.write("points = [");
 		int count = 0;
 		Iterator<OSMWay> wayIterator = getWayQueue().iterator();
 		while (wayIterator.hasNext()) {
@@ -128,18 +140,26 @@ public class OSMReader implements DataReader {
 			boolean lastTopNode = false;
 			long lastnodeid = 0;
 			int nameGoup = 1;
+			
 			for (int i = 0; i < size; i++) {
 				long nodeId = wayNodes.get(i);
 				OSMNode node = getNodeLOMap().get(nodeId);
-				//System.out.println(nodeId + " " + isTopNode(nodeId) + " " + node.getLat() + " " + node.getLon());	
+				
+				if (node.getLat() < minHCMlatitude || node.getLat() > maxHCMlatitude ||
+					node.getLon() < minHCMlongtitude || node.getLon() > maxHCMlongtitude)
+				{
+					break;
+				}
+				
+				//	System.out.println(nodeId + " " + isTopNode(nodeId) + " " + node.getLat() + " " + node.getLon());	
 				if (lastLat == 0) {
 					lastLat = node.getLat();
 					lastLon = node.getLon();
 					lastTopNode = isTopNode(nodeId);
 					lastnodeid = nodeId;
 					if (!lastTopNode) {
-						//	fw.write("\n{ lat: "+ lastLat +", lon: "+ lastLon +"},");
-							fw.write( way.getId() +"\t" + nameGoup + "\t" + lastLat + "\t" + lastLon + "\n");
+							fw.write("\n{ lat: "+ lastLat +", lon: "+ lastLon + ", group: " + nameGoup + "},");
+							//fw.write( way.getId() +"\t" + nameGoup + "\t" + lastLat + "\t" + lastLon + "\n");
 					}
 					continue;
 				}
@@ -153,28 +173,56 @@ public class OSMReader implements DataReader {
 				boolean currentTopNode = isTopNode(nodeId);
 				long currentnodeid = nodeId;
 				
+				//2 temp node will represent for start node and end node in order to divide a segment into several parts 
+				double headLat = lastLat;
+				double headLon = lastLon;
+				double tailLat = currentLat;
+				double tailLon = currentLon;
+				
 				if (lastTopNode ) {
-					OSMOffset offset = getNewNode(lastLat, lastLon, currentLat, currentLon);
-				//	fw.write("\n{ lat: "+ compactDouble(lastLat + offset.getOffsetLat()) +", lon: "+ compactDouble(lastLon + offset.getOffsetLon()) +"},");
-					fw.write( way.getId() +"\t" + nameGoup + "\t" + compactDouble(lastLat + offset.getOffsetLat()) + "\t" + compactDouble(lastLon + offset.getOffsetLon()) + "\n");
+					OSMOffset offset = getNewNode(lastLat, lastLon, currentLat, currentLon, CalOnOSM.distanceTopEdge);
+					//update head Node 
+					headLat = compactDouble(lastLat + offset.getOffsetLat());
+					headLon = compactDouble(lastLon + offset.getOffsetLon());
+					
+					fw.write("\n{ lat: "+ headLat +", lon: "+ headLon + ", group: " + nameGoup + " },");
+									
+					//fw.write( way.getId() +"\t" + nameGoup + "\t" + compactDouble(lastLat + offset.getOffsetLat()) + "\t" + compactDouble(lastLon + offset.getOffsetLon()) + "\n");
 					
 				//	System.out.println( way.getId() +"\t" + nameGoup + "\t" + compactDouble(lastLat + offset.getOffsetLat()) + "\t" +compactDouble(lastLon + offset.getOffsetLon()) + "\n");
 					//System.out.println( way.getId() +"\t" + nameGoup + "\t" + Double.parseDouble(compactDouble(lastLat + offset.getOffsetLat())) + "\t" + Double.parseDouble(compactDouble(lastLon + offset.getOffsetLon()) + "\n"));	
 				}
 				if (currentTopNode){
-					OSMOffset offset = getNewNode(currentLat, currentLon, lastLat, lastLon);
-					fw.write( way.getId() +"\t" + nameGoup + "\t" + compactDouble(currentLat + offset.getOffsetLat()) + "\t" + compactDouble(currentLon + offset.getOffsetLon()) + "\n");
-					//fw.write("\n{ lat: "+ compactDouble(currentLat + offset.getOffsetLat()) +", lon: "+ compactDouble(currentLon + offset.getOffsetLon()) +"},");
+					OSMOffset offset = getNewNode(currentLat, currentLon, lastLat, lastLon, CalOnOSM.distanceTopEdge);
+					//update tail Node 
+					tailLat = compactDouble(currentLat + offset.getOffsetLat());
+					tailLon = compactDouble(currentLon + offset.getOffsetLon());
+					
+					//fw.write("\n{ lat: "+ tailLat +", lon: "+ tailLon +"},");
+					
+					//fw.write( way.getId() +"\t" + nameGoup + "\t" + compactDouble(currentLat + offset.getOffsetLat()) + "\t" + compactDouble(currentLon + offset.getOffsetLon()) + "\n");
 					//fw.write("\n{ lat: "+ compactDouble(currentLat + offset.getOffsetLat()) +", lon: "+ compactDouble(currentLon + offset.getOffsetLon()) +"},");
 					//System.out.println( lastnodeid + ", " + currentnodeid + ", " + way.getId() +"\t" + offset.getOffsetLat() + "\t" + offset.getOffsetLon() + "\t" + currentLon + ", " + currentLat + ", " +  lastLon + ", " + lastLat);
 				//	System.out.println( way.getId() +"\t" + nameGoup + "\t" + Double.parseDouble(compactDouble(currentLat + offset.getOffsetLat())) + "\t" + Double.parseDouble(compactDouble(currentLon + offset.getOffsetLon()) + "\n"));
-					
+				} else {
+					//fw.write("\n{ lat: "+ currentLat +", lon: "+ currentLon +"},");
+					//fw.write( way.getId() +"\t" + nameGoup + "\t" + currentLat + "\t" + currentLon + "\n");
 				}
 				
-				if (!currentTopNode) 
-					//fw.write("\n{ lat: "+ currentLat +", lon: "+ currentLon +"},");
-					fw.write( way.getId() +"\t" + nameGoup + "\t" + currentLat + "\t" + currentLon + "\n");
-				else
+				
+				//Add some new node in segment
+				while (calcDist(headLat, headLon, tailLat, tailLon) >= 7.0) {
+					OSMOffset offset = getNewNode(headLat, headLon, tailLat, tailLon, CalOnOSM.distanceParts);
+					headLat = compactDouble(headLat + offset.getOffsetLat());
+					headLon = compactDouble(headLon + offset.getOffsetLon());
+					
+					fw.write("\n{ lat: "+ headLat +", lon: "+ headLon + ", group: " + nameGoup + " },");
+				}
+				
+				fw.write("\n{ lat: "+ tailLat +", lon: "+ tailLon + ", group: " + nameGoup + " },");
+				
+				//next segment
+				if (currentTopNode) 
 					nameGoup++;
 
 				lastLat = currentLat;
@@ -183,7 +231,7 @@ public class OSMReader implements DataReader {
 				lastnodeid = currentnodeid;
 			}
 		}
-		//fw.write("\n];");
+		fw.write("\n];");
 		fw.close();
 	}
 	
@@ -234,7 +282,8 @@ public class OSMReader implements DataReader {
             return false;
 
         //  45434 ways haven't got "highway" tag. and remove it
-        if (!item.hasTags() || !item.hasTag("highway") || item.hasTag("highway", "footway") || item.hasTag("highway", "path") || item.hasTag("highway", "service")) {
+        if (!item.hasTags() || !item.hasTag("highway") || item.hasTag("highway", "footway") || 
+        		 item.hasTag("highway", "path") || item.hasTag("highway", "service") ||item.hasTag("highway", "pedestrian")) {
             return false;
         }
 
