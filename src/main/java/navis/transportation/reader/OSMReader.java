@@ -11,6 +11,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Queue;
 
+import navis.transportation.CONF;
 import navis.transportation.reader.pbf.OSMWay;
 import navis.transportation.support.CalOnOSM;
 import navis.transportation.support.Helper;
@@ -42,12 +43,12 @@ public class OSMReader implements DataReader {
 	protected static final int EDGE_NODE = 1;
 	protected static final int TOP_NODE = -2;
 	
-	private final double maxHCMlatitude = 10.870566;
+/*	private final double maxHCMlatitude = 10.870566;
 	private final double minHCMlatitude = 10.708010;
 	private final double maxHCMlongtitude = 106.729768;
-	private final double minHCMlongtitude = 106.569436;
+	private final double minHCMlongtitude = 106.569436;*/
 	
-	private String urlOutput = "/home/rimberry/Desktop/resultNavis.js";
+	private String urlOutput = CONF.FILEOUTPUT;
 	
 	private static final Logger logger = LoggerFactory.getLogger(OSMReader.class);
 	
@@ -145,8 +146,8 @@ public class OSMReader implements DataReader {
 				long nodeId = wayNodes.get(i);
 				OSMNode node = getNodeLOMap().get(nodeId);
 				
-				if (node.getLat() < minHCMlatitude || node.getLat() > maxHCMlatitude ||
-					node.getLon() < minHCMlongtitude || node.getLon() > maxHCMlongtitude)
+				if (node.getLat() < CONF.minHCMlatitude || node.getLat() > CONF.maxHCMlatitude ||
+					node.getLon() < CONF.minHCMlongtitude || node.getLon() > CONF.maxHCMlongtitude)
 				{
 					break;
 				}
@@ -158,8 +159,8 @@ public class OSMReader implements DataReader {
 					lastTopNode = isTopNode(nodeId);
 					lastnodeid = nodeId;
 					if (!lastTopNode) {
-							fw.write("\n{ lat: "+ lastLat +", lon: "+ lastLon + ", group: " + nameGoup + "},");
-							//fw.write( way.getId() +"\t" + nameGoup + "\t" + lastLat + "\t" + lastLon + "\n");
+							//fw.write("\n{ lat: "+ lastLat +", lon: "+ lastLon + ", group: " + nameGoup + "},");
+							fw.write( way.getId() +"\t" + nameGoup + "\t" + lastLat + "\t" + lastLon + "\n");
 					}
 					continue;
 				}
@@ -185,9 +186,8 @@ public class OSMReader implements DataReader {
 					headLat = compactDouble(lastLat + offset.getOffsetLat());
 					headLon = compactDouble(lastLon + offset.getOffsetLon());
 					
-					fw.write("\n{ lat: "+ headLat +", lon: "+ headLon + ", group: " + nameGoup + " },");
-									
-					//fw.write( way.getId() +"\t" + nameGoup + "\t" + compactDouble(lastLat + offset.getOffsetLat()) + "\t" + compactDouble(lastLon + offset.getOffsetLon()) + "\n");
+				//	fw.write("\n{ lat: "+ headLat +", lon: "+ headLon + ", group: " + nameGoup + " },");					
+					fw.write( way.getId() +"\t" + nameGoup + "\t" + headLat + "\t" + headLon + "\n");
 					
 				//	System.out.println( way.getId() +"\t" + nameGoup + "\t" + compactDouble(lastLat + offset.getOffsetLat()) + "\t" +compactDouble(lastLon + offset.getOffsetLon()) + "\n");
 					//System.out.println( way.getId() +"\t" + nameGoup + "\t" + Double.parseDouble(compactDouble(lastLat + offset.getOffsetLat())) + "\t" + Double.parseDouble(compactDouble(lastLon + offset.getOffsetLon()) + "\n"));	
@@ -198,15 +198,8 @@ public class OSMReader implements DataReader {
 					tailLat = compactDouble(currentLat + offset.getOffsetLat());
 					tailLon = compactDouble(currentLon + offset.getOffsetLon());
 					
-					//fw.write("\n{ lat: "+ tailLat +", lon: "+ tailLon +"},");
-					
-					//fw.write( way.getId() +"\t" + nameGoup + "\t" + compactDouble(currentLat + offset.getOffsetLat()) + "\t" + compactDouble(currentLon + offset.getOffsetLon()) + "\n");
-					//fw.write("\n{ lat: "+ compactDouble(currentLat + offset.getOffsetLat()) +", lon: "+ compactDouble(currentLon + offset.getOffsetLon()) +"},");
 					//System.out.println( lastnodeid + ", " + currentnodeid + ", " + way.getId() +"\t" + offset.getOffsetLat() + "\t" + offset.getOffsetLon() + "\t" + currentLon + ", " + currentLat + ", " +  lastLon + ", " + lastLat);
 				//	System.out.println( way.getId() +"\t" + nameGoup + "\t" + Double.parseDouble(compactDouble(currentLat + offset.getOffsetLat())) + "\t" + Double.parseDouble(compactDouble(currentLon + offset.getOffsetLon()) + "\n"));
-				} else {
-					//fw.write("\n{ lat: "+ currentLat +", lon: "+ currentLon +"},");
-					//fw.write( way.getId() +"\t" + nameGoup + "\t" + currentLat + "\t" + currentLon + "\n");
 				}
 				
 				
@@ -216,10 +209,12 @@ public class OSMReader implements DataReader {
 					headLat = compactDouble(headLat + offset.getOffsetLat());
 					headLon = compactDouble(headLon + offset.getOffsetLon());
 					
-					fw.write("\n{ lat: "+ headLat +", lon: "+ headLon + ", group: " + nameGoup + " },");
+					//fw.write("\n{ lat: "+ headLat +", lon: "+ headLon + ", group: " + nameGoup + " },");
+					fw.write( way.getId() +"\t" + nameGoup + "\t" + headLat + "\t" + headLon + "\n");
 				}
 				
-				fw.write("\n{ lat: "+ tailLat +", lon: "+ tailLon + ", group: " + nameGoup + " },");
+				//fw.write("\n{ lat: "+ tailLat +", lon: "+ tailLon + ", group: " + nameGoup + " },");
+				fw.write( way.getId() +"\t" + nameGoup + "\t" + tailLat + "\t" + tailLon + "\n");
 				
 				//next segment
 				if (currentTopNode) 

@@ -22,14 +22,21 @@ public class ReadOsmData {
 		BasicConfigurator.configure();
 		
 		/*String urlOsm = "/home/rimberry/research/OSM/Commonly/vietnam-latest.osm.pbf"; */
-		String urlToOsmFile = "/home/rimberry/graphhopper/asia_vietnam.pbf";
+		String urlToOsmFile = CONF.FILEINPUT;
 		ReadOsmData readOsmData = new ReadOsmData();
 		readOsmData.init(urlToOsmFile);
 		readOsmData.importOrLoad();
 	}
 	
+	
+	/**
+	 * set a path to osm file
+	 * @param urlToOsmFile
+	 */
 	public void init(String urlToOsmFile) {
+		
 		String urlToFile = urlToOsmFile;
+		
 		if (!Helper.isEmpty(urlToFile)) {
 			this.osmFile = urlToFile;
 		} else {
