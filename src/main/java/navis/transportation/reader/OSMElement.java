@@ -46,6 +46,13 @@ public abstract class OSMElement {
          properties.put(name, value);
      }
      
+     public String getTag(String name) {
+    	 if (hasTag(name)) 
+    		 return (String) properties.get(name);
+    	 else
+    		 return "No name";
+     }
+     
      public boolean hasTag( String key, String value )
      {
          return value.equals(properties.get(key));

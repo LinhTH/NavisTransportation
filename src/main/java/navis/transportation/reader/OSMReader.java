@@ -78,7 +78,8 @@ public class OSMReader implements DataReader {
 		logger.info("preProcess took: " + swp.stop().getSeconds() + " s");
 		
 		swp.restart().start();
-		process();
+	//	processForMapMatching();
+		processForWeb();
 		logger.info("Process took: " + swp.stop().getSeconds() + " s");
 	}	
 
@@ -126,8 +127,102 @@ public class OSMReader implements DataReader {
 		}
 	}
 	
+	private boolean outOfRange(OSMNode node) {
+		if (node.getLat() < CONF.minHCMlatitude || node.getLat() > CONF.maxHCMlatitude ||
+				node.getLon() < CONF.minHCMlongtitude || node.getLon() > CONF.maxHCMlongtitude)
+		{
+			return true;
+		}
+		return false;
+	}
+	
+	/*
+	 * write every original node without add new node.
+	 */
+	void processForWeb() throws IOException {
+		FileWriter fw = new FileWriter(urlOutput, false);
+		fw.write("[\n");
+		int count = 0;
+		Iterator<OSMWay> wayIterator = getWayQueue().iterator();
+		while (wayIterator.hasNext()) {
+			count++;
+			final OSMWay way = (OSMWay) wayIterator.next();
+			TLongList wayNodes = way.getNodes();
+			int size = wayNodes.size();
+			double lastLon = 0, lastLat = 0;
+			boolean lastTopNode = false;
+			long lastnodeid = 0;
+			int nameGoup = 1;
+			
+			//remove unnecessary ways.
+			if ( this.outOfRange(getNodeLOMap().get(wayNodes.get(0))) ||
+				 this.outOfRange(getNodeLOMap().get(wayNodes.get(wayNodes.size()-1))) ||
+				 !way.hasTag("name") )
+			continue;
+			
+			fw.write("{\n");
+			fw.write("\"name\": \"" + way.getTag("name") + "\",\n");
+			fw.write("\"id\": \"" + way.getId() + "\",\n");
+			fw.write("\"segments\": {\n");
+			
+			/*fw.write( way.getId() + "\n");*/
+			for (int i = 0; i < size; i++) {
+				long nodeId = wayNodes.get(i);
+				OSMNode node = getNodeLOMap().get(nodeId);
+				
+				
+				//	System.out.println(nodeId + " " + isTopNode(nodeId) + " " + node.getLat() + " " + node.getLon());	
+				if (lastLat == 0) {
+					lastLat = node.getLat();
+					lastLon = node.getLon();
+					lastTopNode = isTopNode(nodeId);
+					lastnodeid = nodeId;
+					/*if (!lastTopNode) {
+						//	fw.write( way.getId() +"\t" + nameGoup + "\t" + lastLat + "\t" + lastLon + "\n");
+						fw.write("\"" + nameGoup + "\": \"" + lastLat + "," + lastLon);
+					}*/
+					fw.write("\"" + nameGoup + "\": \"" + lastLat + "," + lastLon);
+					continue;
+				}
+				
+				//remove all same node
+				if (node.getLat() == lastLat && node.getLon() == lastLon)
+					continue;
+				
+				double currentLat = node.getLat();
+				double currentLon = node.getLon();
+				boolean currentTopNode = isTopNode(nodeId);
+				long currentnodeid = nodeId;
+				
+				
+				//next segment
+				if (currentTopNode) {
+					nameGoup++;
+					fw.write(";" + currentLat + "," + currentLon + "\"");
+					if (i < (size - 1))
+						fw.write(",\n\"" + nameGoup + "\": \"" + currentLat + "," + currentLon);
+				} else {
+					fw.write(";" + currentLat + "," + currentLon);
+				}
 
-	void process() throws IOException {
+				lastLat = currentLat;
+				lastLon = currentLon;
+				lastTopNode = currentTopNode;	
+				lastnodeid = currentnodeid;
+			}
+			
+			fw.write("\n}\n},\n");
+			
+		}
+		fw.write("\n]");
+		fw.close();
+	}
+	
+
+	/*
+	 * write every original node and add new node.
+	 */
+	void processForMapMatching() throws IOException {
 		FileWriter fw = new FileWriter(urlOutput, false);
 		fw.write("points = [");
 		int count = 0;
@@ -278,7 +373,8 @@ public class OSMReader implements DataReader {
 
         //  45434 ways haven't got "highway" tag. and remove it
         if (!item.hasTags() || !item.hasTag("highway") || item.hasTag("highway", "footway") || 
-        		 item.hasTag("highway", "path") || item.hasTag("highway", "service") ||item.hasTag("highway", "pedestrian")) {
+        		 item.hasTag("highway", "path") || item.hasTag("highway", "service") ||
+        		 item.hasTag("highway", "tertiary_link") || item.hasTag("highway", "pedestrian")) {
             return false;
         }
 
